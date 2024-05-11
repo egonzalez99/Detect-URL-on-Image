@@ -1,25 +1,23 @@
-import numpy as np
-
-import pytesseract
-#OPENCV
+import os
 import cv2
-
+import numpy as np
+import pytesseract 
 from PIL import ImageGrab
-
-#generate data encryption to message
-from crypto import random
-from crypto.cipher import AES
-
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives import hashes
 from Crypto.Protocol.KDF import PBKDF2
 
 def readInfo():
     #pathway to execute tesseract
-    pytesseract.pytesseract.tesseract_cmd = '**Path to tesseract executable**'
+    pytesseract.pytesseract.tesseract_cmd = 'c:\\Users\\geddi\\OneDrive\\Pictures\\Screenshots\\Screenshot-443.png'
+
     while(True):
         #capture the image in a loop 
         capture = ImageGrab.grab(bbox= (1000, 1000, 1000, 1000))
 
-        text = pytesseract.image_string(cv2.cvtColor(np.array(capture), cv2.COLOR_BGR2GRAY), lang="eng")
+        text = pytesseract.image_to_string(cv2.cvtColor(np.array(capture), cv2.COLOR_BGR2GRAY), lang="eng")
         print(text, "quit the program by pressing 'q' ")
         #option to quit the program
         if( cv2.waitKey(25) & 0xFF == ord('q') ):
@@ -27,33 +25,47 @@ def readInfo():
 
 readInfo()
 
-#encryption of data
-sample_key = random(16)
-print(sample_key)
+# Generate a key using PBKDF2
+def generate_key(password, salt):
+    kdf = PBKDF2(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    return kdf.derive(password)
 
-# salt = b'\xd3\x990\xe4\x89\x81t\xcfckl\xe2\xe3\xb9/\xe8'
-password = "password123"
+# Encrypt data using AES-CBC mode
+def encrypt_data(key, data):
+    iv = os.urandom(16)  # Generate a random IV
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(data) + padder.finalize()
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+    return iv, ciphertext
 
-key = PBKDF2(password, sample_key, dkLen = 16)
-
-message = b"Hello User!"
-
-#create a key that will cipher the message with AES as our block being padded
-cipher = AES.new(key, AES.MODE_CBC)
-cipher_data = cipher.encrypt(pad(message, AES.block_size))
+# Decrypt data using AES-CBC mode
+def decrypt_data(key, iv, ciphertext):
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    decrypted_data = decryptor.update(ciphertext) + decryptor.finalize()
+    return unpadder.update(decrypted_data) + unpadder.finalize()
 
 #write a ciphere with data afterwards. binary file that cant be read
-with open('encryptrd.bih', 'wb') as f:
-    f.write(cipher.iv)
-    f.write(cipher_data)
-#read the data in the file and decrypt it
-with open('encryptrd.bih', 'wb') as f:
-    iv = f.read(8)
-    decrypt_data = f.read()
+password = b'password123'
+salt = os.urandom(16)  # Generate a random salt
+key = generate_key(password, salt)
+data_to_encrypt = b"Hello User!"
 
-cipher = AES.new(key, AES.MODE_CBC, iv = iv)
-reveal = unpad(cipher.decrypt(decrypt_data), AES.block_size)
-print(reveal)
+iv, ciphertext = encrypt_data(key, data_to_encrypt)
+print("IV:", iv)
+print("Ciphertext:", ciphertext)
+
+decrypted_data = decrypt_data(key, iv, ciphertext)
+print("Decrypted Data:", decrypted_data.decode())
 
 # Convert encoding data into 8-bit binary using ASCII
 def genData(data):
@@ -128,7 +140,7 @@ def encode_enc(newimg, data):
 # Encode data into image
 def encode():
     img = input("Enter image name(with extension) : ")
-    image = Image.open(img, 'r')
+    image = ImageGrab.open(img, 'r')
  
     data = input("Enter data to be encoded : ")
     if (len(data) == 0):
@@ -143,7 +155,7 @@ def encode():
 # Decode the data in the image
 def decode():
     img = input("Enter image name(with extension) : ")
-    image = Image.open(img, 'r')
+    image = ImageGrab.open(img, 'r')
  
     data = ''
     imgdata = iter(image.getdata())
