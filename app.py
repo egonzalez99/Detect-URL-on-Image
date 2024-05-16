@@ -1,27 +1,20 @@
-from flask import Flask, request, jsonify
-from flask import send_from_directory
+import pyautogui
+import time
 
-app = Flask(__name__)
+# Define the image you want to search for
+image_path = 'C:\Users\geddi\Downloads\image.jpg'
 
-# Define a route for the root URL
-@app.route('/')
-def index():
-    return 'Welcome to the Image Finder API'
+# Search for the image on the screen
+image_location = pyautogui.locateOnScreen(image_path, confidence=0.8)
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(app.root_path, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
-
-# Define your other routes here...
-
-@app.route('/localhost:5000/process_image', methods=['POST'])
-def process_image():
-    data = request.json
-    image_data = data.get('imageData')
-    # Process the image data here
-    print("Received image data:", image_data)
-    # Respond with a message indicating successful processing
-    return jsonify({'message': 'Image data received and processed successfully'})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if image_location:
+    # Image found, get the center coordinates
+    x, y, width, height = image_location
+    # Define a region of interest (x, y, width, height) 
+    region = (x, y, width, height)
+    image_location = pyautogui.locateOnScreen(image_path, region=region, confidence=0.8)
+    center_x = x + width // 2
+    center_y = y + height // 2
+    print(f"The image was found at coordinates ({center_x}, {center_y})!")
+else:
+    print("The image was not found.")

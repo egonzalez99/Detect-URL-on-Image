@@ -1,3 +1,4 @@
+// Function to extract image data
 function extractImageData(imgElement) {
     // Create a canvas element to draw the image
     var canvas = document.createElement('canvas');
@@ -35,11 +36,23 @@ function detectHiddenUrlsInImages(imageData) {
     });
 }
 
-// Add event listener to detect image load events
-document.addEventListener('load', function(event) {
-    if (event.target.tagName === 'IMG') {
-        // Assuming you have a function to extract image data from the loaded image
-        var imageData = extractImageData(event.target);
-        detectHiddenUrlsInImages(imageData);
-    }
+// Function to handle image load event
+function handleImageLoad(event) {
+    var imgElement = event.target;
+    var imageData = extractImageData(imgElement);
+    detectHiddenUrlsInImages(imageData);
+}
+
+// Add event listener to detect image load events for each IMG element
+document.addEventListener('DOMContentLoaded', function() {
+    var imgElements = document.querySelectorAll('img');
+    imgElements.forEach(function(imgElement) {
+        if (imgElement.complete) {
+            // Image is already loaded
+            handleImageLoad({ target: imgElement });
+        } else {
+            // Add event listener for image load event
+            imgElement.addEventListener('load', handleImageLoad);
+        }
+    });
 });
